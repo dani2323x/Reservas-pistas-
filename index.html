@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pistas Sant Llorenç</title>
+<style>
+:root{
+  --fondo:#f5f6f2;--tarjeta:#fff;--texto:#1d2a26;--suave:#66736e;--linea:#e2e6df;
+  --reservada:#d9503f;--libre:#dcebdd;--sindato:#eceee9;--acento:#1f6f5c;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--fondo:#141a18;--tarjeta:#1d2522;--texto:#e9eeeb;--suave:#9aa8a2;--linea:#2e3834;
+    --reservada:#e8695a;--libre:#26402f;--sindato:#262e2b;--acento:#62c2a8;color-scheme:dark}
+}
+:root[data-theme="dark"]{--fondo:#141a18;--tarjeta:#1d2522;--texto:#e9eeeb;--suave:#9aa8a2;--linea:#2e3834;
+  --reservada:#e8695a;--libre:#26402f;--sindato:#262e2b;--acento:#62c2a8;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--texto);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1000px;margin:0 auto;padding-block:32px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:1.7rem;line-height:1.2;margin:0}
+h2{font-size:1.05rem;margin:0 0 14px}
+.sub{color:var(--suave);font-size:.9rem;margin:4px 0 0}
+.barra{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;margin:24px 0 16px}
+.dia{display:flex;align-items:center;gap:8px}
+.dia strong{min-width:200px;text-align:center}
+.dia strong::first-letter{text-transform:uppercase}
+button{font:inherit;color:inherit;background:var(--tarjeta);border:1px solid var(--linea);border-radius:8px;padding:6px 12px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--acento)}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+.filtro{display:flex;gap:4px}
+.filtro button[aria-pressed=true]{background:var(--acento);border-color:var(--acento);color:var(--tarjeta)}
+.cifras{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.cifra,.panel{background:var(--tarjeta);border:1px solid var(--linea);border-radius:12px;padding:16px}
+.cifra b{display:block;font-size:1.8rem;line-height:1.2;font-variant-numeric:tabular-nums}
+.cifra b.texto{font-size:1.1rem;line-height:1.6}
+.cifra span{color:var(--suave);font-size:.85rem}
+.panel{margin-bottom:16px}
+.aviso{color:var(--suave);font-size:.85rem;margin:12px 0 0}
+.rejilla{overflow-x:auto}
+.tabla{min-width:640px}
+.fila{display:grid;grid-template-columns:170px 1fr;align-items:center;gap:10px;margin-bottom:6px}
+.pista{font-size:.88rem;line-height:1.25}
+.pista small{display:block;color:var(--suave);font-size:.75rem}
+.franjas{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px}
+.franjas i{height:26px;border-radius:3px;background:var(--libre)}
+.franjas i.R{background:var(--reservada)}
+.franjas i.q{background:var(--sindato)}
+.franjas i.c,.leyenda i.c{background:repeating-linear-gradient(135deg,var(--sindato) 0 3px,var(--linea) 3px 5px);opacity:.7}
+.horas{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;font-size:.72rem;color:var(--suave)}
+.leyenda{display:flex;flex-wrap:wrap;gap:14px;font-size:.82rem;color:var(--suave);margin-top:12px}
+.leyenda i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+ul.lista{list-style:none;margin:0;padding:0}
+ul.lista li{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;padding:8px 0;border-top:1px solid var(--linea);font-size:.92rem}
+ul.lista li:first-child{border-top:0}
+ul.lista .tramos{font-variant-numeric:tabular-nums}
+ul.lista .nada{color:var(--suave)}
+table{width:100%;border-collapse:collapse;font-size:.92rem;font-variant-numeric:tabular-nums}
+th{text-align:left;color:var(--suave);font-weight:500;font-size:.82rem;padding:4px 8px}
+td{padding:7px 8px;border-top:1px solid var(--linea)}
+td.n,th.n{text-align:right}
+tr.clic{cursor:pointer}
+tr.clic:hover td{background:var(--fondo)}
+tr.activa td{font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Pistas de Sant Llorenç</h1>
+    <p class="sub" id="actualizado"></p>
+  </header>
+
+  <div class="barra">
+    <div class="dia">
+      <button id="anterior" aria-label="Día anterior">←</button>
+      <strong id="fecha"></strong>
+      <button id="siguiente" aria-label="Día siguiente">→</button>
+    </div>
+    <div class="filtro" id="filtro">
+      <button data-f="todas" aria-pressed="true">Todas</button>
+      <button data-f="padel" aria-pressed="false">Pádel</button>
+      <button data-f="tenis" aria-pressed="false">Tenis</button>
+    </div>
+  </div>
+
+  <section class="cifras" id="cifras"></section>
+
+  <section class="panel">
+    <h2>Horario del día</h2>
+    <div class="rejilla"><div class="tabla" id="tabla"></div></div>
+    <div class="leyenda">
+      <span><i style="background:var(--reservada)"></i>Reservada</span>
+      <span><i style="background:var(--libre)"></i>Libre</span>
+      <span><i style="background:var(--sindato)"></i>Sin dato</span>
+      <span><i class="c"></i>Cerrada</span>
+    </div>
+    <p class="aviso" id="aviso"></p>
+  </section>
+
+  <section class="panel">
+    <h2>Horas reservadas por pista</h2>
+    <ul class="lista" id="lista"></ul>
+  </section>
+
+  <section class="panel">
+    <h2>Resumen diario</h2>
+    <table>
+      <thead><tr><th>Día</th><th class="n">Reservas aprox.</th><th class="n">Horas reservadas</th><th class="n">Ocupación</th></tr></thead>
+      <tbody id="historico"></tbody>
+    </table>
+    <p class="aviso">La web municipal usa el mismo color para reservas y bloqueos, así que un cierre de pista también cuenta como reservado. Las reservas son aproximadas: cada bloque de franjas seguidas cuenta como una, aunque sean dos reservas consecutivas. La ocupación se calcula de 08:00 a 24:00 sobre las franjas con dato. Todas las pistas de pádel menos Pádel 3 cierran de 22:00 a 24:00, y esas horas no cuentan.</p>
+  </section>
+</main>
+
+<script src="datos.js"></script>
+<script>
+const DIAS = (window.DATOS && window.DATOS.dias) || {};
+const FECHAS = Object.keys(DIAS).sort();
+const INICIO_OCUPACION = 16; // 08:00
+const INICIO_CIERRE = 44; // 22:00: todas las pistas de pádel menos Pádel 3 cierran a esta hora
+let indice = FECHAS.length - 1;
+let filtro = 'todas';
+
+const $ = id => document.getElementById(id);
+const hora = i => String(Math.floor(i / 2)).padStart(2, '0') + ':' + (i % 2 ? '30' : '00');
+const fechaLocal = f => new Date(f + 'T12:00:00');
+const horasTexto = n => String(n).replace('.', ',') + ' h';
+
+function titulo(texto) {
+  return texto.toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase()).replace('Padel', 'Pádel');
+}
+function conCierre(nombre, estados) {
+  if (!/^padel/i.test(nombre) || nombre === 'PADEL 3') return estados;
+  return estados.slice(0, INICIO_CIERRE) + 'C'.repeat(48 - INICIO_CIERRE);
+}
+function pistas(fecha) {
+  return Object.entries(DIAS[fecha] || {}).map(([clave, estados]) => {
+    const [nombre, complejo] = clave.split('|');
+    return { nombre: titulo(nombre), complejo: titulo(complejo || ''), estados: conCierre(nombre, estados),
+             deporte: /^tenis/i.test(nombre) ? 'tenis' : 'padel' };
+  }).filter(p => filtro === 'todas' || p.deporte === filtro)
+    .sort((a, b) => a.deporte.localeCompare(b.deporte) || a.complejo.localeCompare(b.complejo) || a.nombre.localeCompare(b.nombre));
+}
+function tramos(estados) {
+  const out = [];
+  for (let i = 0; i < 48; i++) {
+    if (estados[i] !== 'R') continue;
+    let fin = i;
+    while (fin + 1 < 48 && estados[fin + 1] === 'R') fin++;
+    out.push([i, fin + 1]);
+    i = fin;
+  }
+  return out;
+}
+function resumen(lista) {
+  let reservadas = 0, reservas = 0, conDato = 0, ocupadas = 0;
+  const porHora = new Array(48).fill(0);
+  lista.forEach(p => {
+    reservas += tramos(p.estados).length;
+    for (let i = 0; i < 48; i++) {
+      if (p.estados[i] === 'R') { reservadas++; porHora[i]++; }
+      if (i >= INICIO_OCUPACION && p.estados[i] !== '?' && p.estados[i] !== 'C') {
+        conDato++;
+        if (p.estados[i] === 'R') ocupadas++;
+      }
+    }
+  });
+  return { reservadas, reservas, porHora, ocupacion: conDato ? Math.round(ocupadas / conDato * 100) : null };
+}
+function cifra(valor, etiqueta, esTexto) {
+  return `<div class="cifra"><b class="${esTexto ? 'texto' : ''}">${valor}</b><span>${etiqueta}</span></div>`;
+}
+
+function pintar() {
+  if (!FECHAS.length) { $('fecha').textContent = 'Sin datos'; return; }
+  const fecha = FECHAS[indice];
+  const lista = pistas(fecha);
+  const r = resumen(lista);
+
+  $('fecha').textContent = fechaLocal(fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  $('anterior').disabled = indice === 0;
+  $('siguiente').disabled = indice === FECHAS.length - 1;
+  document.querySelectorAll('#filtro button').forEach(b => b.setAttribute('aria-pressed', b.dataset.f === filtro));
+
+  const masReservada = lista.slice().sort((a, b) => resumen([b]).reservadas - resumen([a]).reservadas)[0];
+  const maxHora = Math.max(...r.porHora);
+  const punta = maxHora ? hora(r.porHora.indexOf(maxHora)) + ' (' + maxHora + (maxHora === 1 ? ' pista)' : ' pistas)') : '—';
+  $('cifras').innerHTML =
+    cifra(r.reservas, 'reservas aproximadas') +
+    cifra(horasTexto(r.reservadas / 2), 'horas reservadas') +
+    cifra(r.ocupacion === null ? '—' : r.ocupacion + ' %', 'ocupación de 08:00 a 24:00') +
+    cifra(punta, 'hora con más pistas reservadas', true) +
+    cifra(masReservada && resumen([masReservada]).reservadas ? masReservada.nombre : '—', 'pista más reservada', true);
+
+  let desde = INICIO_OCUPACION;
+  lista.forEach(p => { const i = p.estados.indexOf('R'); if (i >= 0 && i < desde) desde = i - i % 2; });
+  const horas = [];
+  for (let i = desde; i < 48; i += 2) horas.push(`<span style="grid-column:span 2">${String(i / 2).padStart(2, '0')}</span>`);
+  $('tabla').innerHTML =
+    `<div class="fila"><span></span><div class="horas">${horas.join('')}</div></div>` +
+    lista.map(p => {
+      let celdas = '';
+      for (let i = desde; i < 48; i++) {
+        const e = p.estados[i];
+        const nombre = e === 'R' ? 'reservada' : e === 'V' ? 'libre' : e === 'C' ? 'cerrada' : 'sin dato';
+        celdas += `<i class="${e === 'R' ? 'R' : e === '?' ? 'q' : e === 'C' ? 'c' : ''}" title="${hora(i)} · ${nombre}"></i>`;
+      }
+      return `<div class="fila"><div class="pista">${p.nombre}<small>${p.complejo}</small></div><div class="franjas">${celdas}</div></div>`;
+    }).join('');
+
+  let sinDato = -1;
+  lista.forEach(p => { for (let i = INICIO_OCUPACION; i < 48; i++) if (p.estados[i] === '?' && i > sinDato) sinDato = i; });
+  $('aviso').textContent = sinDato >= 0
+    ? `Faltan datos hasta las ${hora(sinDato + 1)}: la web municipal oculta las horas ya pasadas y aún no se había recogido esa franja.`
+    : '';
+
+  $('lista').innerHTML = lista.map(p => {
+    const t = tramos(p.estados);
+    const texto = t.length
+      ? `<span class="tramos">${t.map(([a, b]) => hora(a) + '–' + (b === 48 ? '24:00' : hora(b))).join(', ')}</span>`
+      : '<span class="nada">Sin reservas registradas</span>';
+    return `<li><span>${p.nombre}</span>${texto}</li>`;
+  }).join('');
+
+  $('historico').innerHTML = FECHAS.slice().reverse().map(f => {
+    const s = resumen(pistas(f));
+    const etiqueta = fechaLocal(f).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+    return `<tr class="clic ${f === fecha ? 'activa' : ''}" data-f="${f}"><td>${etiqueta}</td><td class="n">${s.reservas}</td><td class="n">${horasTexto(s.reservadas / 2)}</td><td class="n">${s.ocupacion === null ? '—' : s.ocupacion + ' %'}</td></tr>`;
+  }).join('');
+}
+
+$('anterior').onclick = () => { indice--; pintar(); };
+$('siguiente').onclick = () => { indice++; pintar(); };
+$('filtro').onclick = e => { if (e.target.dataset.f) { filtro = e.target.dataset.f; pintar(); } };
+$('historico').onclick = e => {
+  const fila = e.target.closest('tr');
+  if (fila) { indice = FECHAS.indexOf(fila.dataset.f); pintar(); }
+};
+if (window.DATOS && window.DATOS.actualizado) {
+  $('actualizado').textContent = 'Última consulta: ' + new Date(window.DATOS.actualizado)
+    .toLocaleString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+}
+pintar();
+</script>
+</body>
+</html>
