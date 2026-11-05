@@ -47,7 +47,6 @@ button:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
 .franjas i{height:26px;border-radius:3px;background:var(--libre)}
 .franjas i.R{background:var(--reservada)}
 .franjas i.q{background:var(--sindato)}
-.franjas i.c,.leyenda i.c{background:repeating-linear-gradient(135deg,var(--sindato) 0 3px,var(--linea) 3px 5px);opacity:.7}
 .horas{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;font-size:.72rem;color:var(--suave)}
 .leyenda{display:flex;flex-wrap:wrap;gap:14px;font-size:.82rem;color:var(--suave);margin-top:12px}
 .leyenda i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
@@ -94,7 +93,6 @@ tr.activa td{font-weight:600}
       <span><i style="background:var(--reservada)"></i>Reservada</span>
       <span><i style="background:var(--libre)"></i>Libre</span>
       <span><i style="background:var(--sindato)"></i>Sin dato</span>
-      <span><i class="c"></i>Cerrada</span>
     </div>
     <p class="aviso" id="aviso"></p>
   </section>
@@ -110,7 +108,7 @@ tr.activa td{font-weight:600}
       <thead><tr><th>Día</th><th class="n">Reservas aprox.</th><th class="n">Horas reservadas</th><th class="n">Ocupación</th></tr></thead>
       <tbody id="historico"></tbody>
     </table>
-    <p class="aviso">La web municipal usa el mismo color para reservas y bloqueos, así que un cierre de pista también cuenta como reservado. Las reservas son aproximadas: cada bloque de franjas seguidas cuenta como una, aunque sean dos reservas consecutivas. La ocupación se calcula de 08:00 a 24:00 sobre las franjas con dato. Todas las pistas de pádel menos Pádel 3 cierran de 22:00 a 24:00, y esas horas no cuentan.</p>
+    <p class="aviso">La web municipal usa el mismo color para reservas y bloqueos, así que un cierre de pista también cuenta como reservado. Las reservas son aproximadas: cada bloque de franjas seguidas cuenta como una, aunque sean dos reservas consecutivas. Las pistas solo se pueden reservar de 08:00 a 22:00, así que el resto de horas no cuenta. La ocupación se calcula sobre las franjas con dato.</p>
   </section>
 </main>
 
@@ -118,8 +116,8 @@ tr.activa td{font-weight:600}
 <script>
 const DIAS = (window.DATOS && window.DATOS.dias) || {};
 const FECHAS = Object.keys(DIAS).sort();
-const INICIO_OCUPACION = 16; // 08:00
-const INICIO_CIERRE = 44; // 22:00: todas las pistas de pádel menos Pádel 3 cierran a esta hora
+const APERTURA = 16; // 08:00: las pistas solo se pueden reservar de 08:00 a 22:00
+const CIERRE = 44; // 22:00
 let indice = FECHAS.length - 1;
 let filtro = 'todas';
 
@@ -131,14 +129,13 @@ const horasTexto = n => String(n).replace('.', ',') + ' h';
 function titulo(texto) {
   return texto.toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase()).replace('Padel', 'Pádel');
 }
-function conCierre(nombre, estados) {
-  if (!/^padel/i.test(nombre) || nombre === 'PADEL 3') return estados;
-  return estados.slice(0, INICIO_CIERRE) + 'C'.repeat(48 - INICIO_CIERRE);
+function conCierre(estados) {
+  return 'C'.repeat(APERTURA) + estados.slice(APERTURA, CIERRE) + 'C'.repeat(48 - CIERRE);
 }
 function pistas(fecha) {
   return Object.entries(DIAS[fecha] || {}).map(([clave, estados]) => {
     const [nombre, complejo] = clave.split('|');
-    return { nombre: titulo(nombre), complejo: titulo(complejo || ''), estados: conCierre(nombre, estados),
+    return { nombre: titulo(nombre), complejo: titulo(complejo || ''), estados: conCierre(estados),
              deporte: /^tenis/i.test(nombre) ? 'tenis' : 'padel' };
   }).filter(p => filtro === 'todas' || p.deporte === filtro)
     .sort((a, b) => a.deporte.localeCompare(b.deporte) || a.complejo.localeCompare(b.complejo) || a.nombre.localeCompare(b.nombre));
@@ -161,7 +158,7 @@ function resumen(lista) {
     reservas += tramos(p.estados).length;
     for (let i = 0; i < 48; i++) {
       if (p.estados[i] === 'R') { reservadas++; porHora[i]++; }
-      if (i >= INICIO_OCUPACION && p.estados[i] !== '?' && p.estados[i] !== 'C') {
+      if (p.estados[i] !== '?' && p.estados[i] !== 'C') {
         conDato++;
         if (p.estados[i] === 'R') ocupadas++;
       }
@@ -190,28 +187,26 @@ function pintar() {
   $('cifras').innerHTML =
     cifra(r.reservas, 'reservas aproximadas') +
     cifra(horasTexto(r.reservadas / 2), 'horas reservadas') +
-    cifra(r.ocupacion === null ? '—' : r.ocupacion + ' %', 'ocupación de 08:00 a 24:00') +
+    cifra(r.ocupacion === null ? '—' : r.ocupacion + ' %', 'ocupación de 08:00 a 22:00') +
     cifra(punta, 'hora con más pistas reservadas', true) +
     cifra(masReservada && resumen([masReservada]).reservadas ? masReservada.nombre : '—', 'pista más reservada', true);
 
-  let desde = INICIO_OCUPACION;
-  lista.forEach(p => { const i = p.estados.indexOf('R'); if (i >= 0 && i < desde) desde = i - i % 2; });
   const horas = [];
-  for (let i = desde; i < 48; i += 2) horas.push(`<span style="grid-column:span 2">${String(i / 2).padStart(2, '0')}</span>`);
+  for (let i = APERTURA; i < CIERRE; i += 2) horas.push(`<span style="grid-column:span 2">${String(i / 2).padStart(2, '0')}</span>`);
   $('tabla').innerHTML =
     `<div class="fila"><span></span><div class="horas">${horas.join('')}</div></div>` +
     lista.map(p => {
       let celdas = '';
-      for (let i = desde; i < 48; i++) {
+      for (let i = APERTURA; i < CIERRE; i++) {
         const e = p.estados[i];
-        const nombre = e === 'R' ? 'reservada' : e === 'V' ? 'libre' : e === 'C' ? 'cerrada' : 'sin dato';
-        celdas += `<i class="${e === 'R' ? 'R' : e === '?' ? 'q' : e === 'C' ? 'c' : ''}" title="${hora(i)} · ${nombre}"></i>`;
+        const nombre = e === 'R' ? 'reservada' : e === 'V' ? 'libre' : 'sin dato';
+        celdas += `<i class="${e === 'R' ? 'R' : e === '?' ? 'q' : ''}" title="${hora(i)} · ${nombre}"></i>`;
       }
       return `<div class="fila"><div class="pista">${p.nombre}<small>${p.complejo}</small></div><div class="franjas">${celdas}</div></div>`;
     }).join('');
 
   let sinDato = -1;
-  lista.forEach(p => { for (let i = INICIO_OCUPACION; i < 48; i++) if (p.estados[i] === '?' && i > sinDato) sinDato = i; });
+  lista.forEach(p => { for (let i = APERTURA; i < CIERRE; i++) if (p.estados[i] === '?' && i > sinDato) sinDato = i; });
   $('aviso').textContent = sinDato >= 0
     ? `Faltan datos hasta las ${hora(sinDato + 1)}: la web municipal oculta las horas ya pasadas y aún no se había recogido esa franja.`
     : '';
@@ -219,7 +214,7 @@ function pintar() {
   $('lista').innerHTML = lista.map(p => {
     const t = tramos(p.estados);
     const texto = t.length
-      ? `<span class="tramos">${t.map(([a, b]) => hora(a) + '–' + (b === 48 ? '24:00' : hora(b))).join(', ')}</span>`
+      ? `<span class="tramos">${t.map(([a, b]) => hora(a) + '–' + hora(b)).join(', ')}</span>`
       : '<span class="nada">Sin reservas registradas</span>';
     return `<li><span>${p.nombre}</span>${texto}</li>`;
   }).join('');
